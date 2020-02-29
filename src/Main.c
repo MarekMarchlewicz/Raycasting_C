@@ -1,8 +1,9 @@
 #include <stdio.h>
-#include "Constants.h"
-
+#include<limits.h>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
+#include "Constants.h"
+
 
 typedef struct Player
 {
@@ -17,12 +18,23 @@ typedef struct Player
 	float rotSpeed;
 } Player;
 
+typedef struct  Ray
+{
+	float angle;
+	float hitX;
+	float hitY;
+	float dist;
+	int isVertical;
+	int hitContent;
+} Ray;
+
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 
 int ticksLastFrame = 0;
 
 Player player;
+Ray rays[NUM_RAYS];
 int isGameRunning = FALSE;
 
 int initializeWindow();
@@ -32,7 +44,10 @@ void setup();
 void processInput();
 void movePlayer(float deltaTime);
 
+float normalizeAngle(float angle);
 int hasWallAt(int x, int u);
+float distanceBetweenPoints(float x1, float y1, float x2, float y2);
+void castAllRays();
 
 void renderMap();
 void renderPlayer();
@@ -83,6 +98,7 @@ void update()
 	ticksLastFrame = SDL_GetTicks();
 
 	movePlayer(deltaTime);
+	castAllRays();
 }
 
 void render()
@@ -91,7 +107,7 @@ void render()
 	SDL_RenderClear(renderer);
 
 	renderMap();
-	//renderRays();
+	renderRays();
 	renderPlayer();
 
 	SDL_RenderPresent(renderer);
@@ -140,11 +156,150 @@ void movePlayer(float deltaTime)
 	float newX = player.x + cos(player.rotationAngle) * moveStep;
 	float newY = player.y + sin(player.rotationAngle) * moveStep;
 
-	if (!hasWallAt(newX, newY))
+	if (!hasWallAt((int)newX, (int)newY))
 	{
-	player.x = newX;
-	player.y = newY;
+		player.x = newX;
+		player.y = newY;
+	}
 }
+
+void castAllRays()
+{
+	for (int i = 0; i < NUM_RAYS; i++)
+	{
+		float rayAngle = player.rotationAngle - (FOV / 2.0f) + i * (FOV / NUM_RAYS);
+		float angle = normalizeAngle(rayAngle);
+		rays[i].angle = angle;
+		float tangent = tan(angle);
+
+		int isFacingDown = angle > 0 && angle < PI;
+		int isFacingUp = !isFacingDown;
+
+		int isFacingRight = angle < 0.5 * PI || angle > 1.5 * PI;
+		int isFacingLeft = !isFacingRight;
+
+		float xintercept, yintercept;
+		float xstep, ystep;
+
+		//////// Horizontal //////// 
+
+		int foundHorzHit = FALSE;
+		float horzWallHitX = 0;
+		float horzWallHitY = 0;
+		int horzWallContent = -1;
+
+		yintercept = floor(player.y / TILE_SIZE) * TILE_SIZE;
+		yintercept += isFacingDown ? TILE_SIZE : 0;
+
+		xintercept = player.x + (yintercept - player.y) / tangent;
+
+		ystep =  isFacingUp ? -TILE_SIZE : TILE_SIZE;
+
+		xstep = TILE_SIZE / tangent;
+		xstep *= (isFacingLeft && xstep > 0) ? -1 : 1;
+		xstep *= (isFacingRight && xstep < 0) ? -1 : 1;
+
+		float nextHorzTouchX = xintercept;
+		float nextHorzTouchY = yintercept;
+
+		while (nextHorzTouchX >= 0 && nextHorzTouchX <= WINDOW_WIDTH && nextHorzTouchY >= 0 && nextHorzTouchY <= WINDOW_HEIGHT) 
+		{
+			float xToCheck = nextHorzTouchX;
+			float yToCheck = nextHorzTouchY + (isFacingUp ? -1 : 0);
+
+			int mapContent = hasWallAt(xToCheck, yToCheck);
+			if (mapContent)
+			{
+				horzWallHitX =  nextHorzTouchX;
+				horzWallHitY = nextHorzTouchY;
+				horzWallContent = mapContent;
+				foundHorzHit = TRUE;
+				break;
+			}
+			else
+			{
+				nextHorzTouchX += xstep;
+				nextHorzTouchY += ystep;
+			}
+		}
+
+		//////// Vertical //////// 
+		
+		int foundVertHit = FALSE;
+		float vertWallHitX = 0;
+		float vertWallHitY = 0;
+		int vertWallContent = -1;
+
+		xintercept = floor(player.x / TILE_SIZE) * TILE_SIZE;
+		xintercept += isFacingRight ? TILE_SIZE : 0;
+
+		yintercept = player.y + (xintercept - player.x) * tangent;
+
+		xstep = isFacingLeft ? -TILE_SIZE : TILE_SIZE;
+
+		ystep = TILE_SIZE * tangent;
+		ystep *= (isFacingUp == 0 && ystep > 0) ? -1 : 1;
+		ystep *= (isFacingDown && ystep < 0) ? -1 : 1;
+
+		float nextVertTouchX = xintercept;
+		float nextVertTouchY = yintercept;
+
+		while (nextVertTouchX >= 0 && nextVertTouchX <= WINDOW_WIDTH && nextVertTouchY >= 0 && nextVertTouchY <= WINDOW_HEIGHT) 
+		{
+			float xToCheck = nextVertTouchX + (isFacingLeft ? -1 : 0);
+			float yToCheck = nextVertTouchY;
+
+			int mapContent = hasWallAt(xToCheck, yToCheck);
+			if (mapContent)
+			{
+				vertWallHitX = nextVertTouchX;
+				vertWallHitY =  nextVertTouchY;
+				vertWallContent = mapContent;
+				foundVertHit = TRUE;
+				break;
+			}
+			else
+			{
+				nextVertTouchX += xstep;
+				nextVertTouchY += ystep;
+			}
+		}
+		
+		float hDist = foundHorzHit ? distanceBetweenPoints(player.x, player.y, horzWallHitX, horzWallHitY) : INT_MAX;
+		float vDist =  foundVertHit ? distanceBetweenPoints(player.x, player.y, vertWallHitX, vertWallHitY) : INT_MAX;
+		
+		if (vDist < hDist)
+		{
+			//vertical
+			rays[i].dist = vDist;
+			rays[i].hitContent = vertWallContent;
+			rays[i].hitX = vertWallHitX;
+			rays[i].hitY = vertWallHitY;
+			rays[i].isVertical = TRUE;
+		}
+		else
+		{
+			//horizontal
+			rays[i].dist = hDist;
+			rays[i].hitContent = horzWallContent;
+			rays[i].hitX = horzWallHitX;
+			rays[i].hitY = horzWallHitY;
+			rays[i].isVertical = FALSE;
+		}
+	}
+}
+
+float distanceBetweenPoints(float x1, float y1, float x2, float y2) 
+{
+	return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+}
+
+float normalizeAngle(float angle)
+{
+	float normAngle = remainder(angle, PI_2);
+	if (normAngle < 0)
+		normAngle += PI_2;
+	return normAngle;
 }
 
 int hasWallAt(int x, int y)
@@ -155,7 +310,7 @@ int hasWallAt(int x, int y)
 	int mapGridIndexX = floor(x / TILE_SIZE);
 	int mapGridIndexY = floor(y / TILE_SIZE);
 
-	return map[mapGridIndexY][mapGridIndexX] == 1;
+	return map[mapGridIndexY][mapGridIndexX];
 }
 
 void renderMap()
@@ -191,6 +346,20 @@ void renderPlayer()
 
 void renderRays()
 {
+	for (int i = 0; i < NUM_RAYS; i++)
+	{
+		if(rays[i].isVertical)
+			SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+		else
+			SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+		SDL_RenderDrawLine(
+			renderer,
+			player.x * MINIMAP_SCALE_FACTOR,
+			player.y * MINIMAP_SCALE_FACTOR,
+			rays[i].hitX * MINIMAP_SCALE_FACTOR,
+			rays[i].hitY * MINIMAP_SCALE_FACTOR
+		);
+	}
 }
 
 int initializeWindow()
