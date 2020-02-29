@@ -3,10 +3,36 @@
 #define FALSE 0
 #define TRUE 1
 
+#define MAP_NUM_ROWS 11
+#define MAP_NUM_COLS 15
+#define TILE_SIZE 64
+
 #define FPS 30
+#define FRAME_TIME_LENGTH (1000.0f / FPS)
 
-#define FRAME_TIME_LENGTH 1000.0f / FPS
+#define PI 3.14159265f
+#define PI_2 6.28318530f
 
-const int WINDOW_WIDTH = 800;
-const int WINDOW_HEIGHT = 600;
+#define WINDOW_WIDTH (MAP_NUM_COLS * TILE_SIZE)
+#define WINDOW_HEIGHT (MAP_NUM_ROWS * TILE_SIZE)
+
+#define FOV (60 * PI / 180)
+
+#define NUM_RAYS WINDOW_WIDTH
+
 const char* const WINDOW_TITLE = "Raycasting demo";
+
+const int map[MAP_NUM_ROWS][MAP_NUM_COLS] =
+{
+			{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+			{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1},
+			{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1},
+			{1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1},
+			{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1},
+			{1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1},
+			{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+			{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+			{1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1},
+			{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+			{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+};

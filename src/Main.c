@@ -6,8 +6,15 @@
 
 typedef struct Player
 {
-	float posX;
-	float posY;
+	float x;
+	float y;
+	float width;
+	float height;
+	int turnDir;  // -1 turn left | +1 turn right
+	int walkDir; // -1 move back | + 1 move forward
+	float rotationAngle;
+	float speed;
+	float rotSpeed;
 } Player;
 
 SDL_Window* window = NULL;
@@ -24,6 +31,9 @@ void setup();
 
 void processInput();
 
+void renderMap();
+void renderPlayer();
+void renderRays();
 void render();
 
 void update();
@@ -51,8 +61,15 @@ int main(int argc, char* argv[])
 
 void setup()
 {
-	player.posX = 0;
-	player.posY = 0;
+	player.x = 0;
+	player.y = 0;
+	player.width = 5;
+	player.height = 5;
+	player.turnDir = 0;
+	player.walkDir = 0;
+	player.rotationAngle = PI / 2;
+	player.speed = 100;
+	player.rotSpeed = PI;
 }
 
 void update()
@@ -62,18 +79,18 @@ void update()
 	float deltaTime = (SDL_GetTicks() - ticksLastFrame) / 1000.0f;
 	ticksLastFrame = SDL_GetTicks();
 
-	player.posX += deltaTime * 20;
-	player.posY += deltaTime * 20;
+	player.x += deltaTime * 20;
+	player.y += deltaTime * 20;
 }
 
 void render()
 {
-	SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+	SDL_SetRenderDrawColor(renderer, 31, 31, 31, 255);
 	SDL_RenderClear(renderer);
 
-	SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-	SDL_Rect rect = { player.posX, player.posY, 20, 20 };
-	SDL_RenderFillRect(renderer, &rect);
+	renderMap();
+	//renderRays();
+	//renderPlayer();
 
 	SDL_RenderPresent(renderer);
 }
@@ -92,6 +109,36 @@ void processInput()
 			isGameRunning = FALSE;
 		break;
 	}
+}
+
+void renderMap()
+{
+	for (int y = 0; y < MAP_NUM_ROWS; y++)
+	{
+		for (int x = 0; x < MAP_NUM_COLS; x++)
+		{
+			int tileX = x * TILE_SIZE;
+			int tileY = y * TILE_SIZE;
+			int tileColor = map[y][x] != 0 ? 255 : 0;
+
+			SDL_SetRenderDrawColor(renderer, tileColor, tileColor, tileColor, 255);
+			SDL_Rect mapTileRect = { tileX, tileY, TILE_SIZE, TILE_SIZE };
+			SDL_RenderFillRect(renderer, &mapTileRect);
+			SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+			SDL_RenderDrawRect(renderer, &mapTileRect);
+		}
+	}
+}
+
+void renderPlayer()
+{
+	SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+	SDL_Rect rect = { player.x, player.y, 20, 20 };
+	SDL_RenderFillRect(renderer, &rect);
+}
+
+void renderRays()
+{
 }
 
 int initializeWindow()
