@@ -30,6 +30,9 @@ void destroyWindow();
 void setup();
 
 void processInput();
+void movePlayer(float deltaTime);
+
+int hasWallAt(int x, int u);
 
 void renderMap();
 void renderPlayer();
@@ -61,8 +64,8 @@ int main(int argc, char* argv[])
 
 void setup()
 {
-	player.x = 0;
-	player.y = 0;
+	player.x = WINDOW_WIDTH / 2;
+	player.y = WINDOW_HEIGHT / 2;
 	player.width = 5;
 	player.height = 5;
 	player.turnDir = 0;
@@ -79,8 +82,7 @@ void update()
 	float deltaTime = (SDL_GetTicks() - ticksLastFrame) / 1000.0f;
 	ticksLastFrame = SDL_GetTicks();
 
-	player.x += deltaTime * 20;
-	player.y += deltaTime * 20;
+	movePlayer(deltaTime);
 }
 
 void render()
@@ -90,7 +92,7 @@ void render()
 
 	renderMap();
 	//renderRays();
-	//renderPlayer();
+	renderPlayer();
 
 	SDL_RenderPresent(renderer);
 }
@@ -107,8 +109,53 @@ void processInput()
 	case SDL_KEYDOWN:
 		if (event.key.keysym.sym == SDLK_ESCAPE)
 			isGameRunning = FALSE;
+		if (event.key.keysym.sym == SDLK_UP)
+			player.walkDir = 1;
+		if (event.key.keysym.sym == SDLK_DOWN)
+			player.walkDir = -1;
+		if (event.key.keysym.sym == SDLK_LEFT)
+			player.turnDir = -1;
+		if (event.key.keysym.sym == SDLK_RIGHT)
+			player.turnDir = 1;
+		break;
+	case SDL_KEYUP:
+		if (event.key.keysym.sym == SDLK_UP && player.walkDir == 1)
+			player.walkDir = 0;
+		if (event.key.keysym.sym == SDLK_DOWN && player.walkDir == -1)
+			player.walkDir = 0;
+		if (event.key.keysym.sym == SDLK_LEFT && player.turnDir == -1)
+			player.turnDir = 0;
+		if (event.key.keysym.sym == SDLK_RIGHT && player.turnDir == 1)
+			player.turnDir = 0;
 		break;
 	}
+}
+
+void movePlayer(float deltaTime)
+{
+	player.rotationAngle += player.turnDir * player.rotSpeed * deltaTime;
+
+	float moveStep = player.walkDir * player.speed * deltaTime;
+
+	float newX = player.x + cos(player.rotationAngle) * moveStep;
+	float newY = player.y + sin(player.rotationAngle) * moveStep;
+
+	if (!hasWallAt(newX, newY))
+	{
+	player.x = newX;
+	player.y = newY;
+}
+}
+
+int hasWallAt(int x, int y)
+{
+	if (x < 0 || x > WINDOW_WIDTH || y < 0 || y > WINDOW_HEIGHT)
+		return TRUE;
+
+	int mapGridIndexX = floor(x / TILE_SIZE);
+	int mapGridIndexY = floor(y / TILE_SIZE);
+
+	return map[mapGridIndexY][mapGridIndexX] == 1;
 }
 
 void renderMap()
@@ -122,19 +169,24 @@ void renderMap()
 			int tileColor = map[y][x] != 0 ? 255 : 0;
 
 			SDL_SetRenderDrawColor(renderer, tileColor, tileColor, tileColor, 255);
-			SDL_Rect mapTileRect = { tileX, tileY, TILE_SIZE, TILE_SIZE };
+			SDL_Rect mapTileRect = { tileX * MINIMAP_SCALE_FACTOR, tileY * MINIMAP_SCALE_FACTOR, TILE_SIZE * MINIMAP_SCALE_FACTOR, TILE_SIZE  * MINIMAP_SCALE_FACTOR };
 			SDL_RenderFillRect(renderer, &mapTileRect);
-			SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-			SDL_RenderDrawRect(renderer, &mapTileRect);
+			/*SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+			SDL_RenderDrawRect(renderer, &mapTileRect);*/
 		}
 	}
 }
 
 void renderPlayer()
 {
+	SDL_Rect rect = { player.x * MINIMAP_SCALE_FACTOR, player.y * MINIMAP_SCALE_FACTOR, player.width * MINIMAP_SCALE_FACTOR, player.height * MINIMAP_SCALE_FACTOR  };
 	SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-	SDL_Rect rect = { player.x, player.y, 20, 20 };
 	SDL_RenderFillRect(renderer, &rect);
+	SDL_RenderDrawLine(renderer,
+		player.x * MINIMAP_SCALE_FACTOR,
+		player.y * MINIMAP_SCALE_FACTOR,
+		player.x * MINIMAP_SCALE_FACTOR + cos(player.rotationAngle) * 40 * MINIMAP_SCALE_FACTOR,
+		player.y * MINIMAP_SCALE_FACTOR + sin(player.rotationAngle) * 40 * MINIMAP_SCALE_FACTOR);
 }
 
 void renderRays()
