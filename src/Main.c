@@ -2,6 +2,7 @@
 #include<limits.h>
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
+#include "upng.h"
 #include "Constants.h"
 
 
@@ -36,15 +37,18 @@ typedef struct  Ray
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 
+upng_t* pngTexture;
+
 int ticksLastFrame = 0;
 
 Player player;
 Ray rays[NUM_RAYS];
 int isGameRunning = FALSE;
 
-Uint32* colorBuffer = NULL;
-Uint32* wallTexture = NULL;
+uint32_t* colorBuffer = NULL;
+uint32_t* wallTexture = NULL;
 SDL_Texture* colorBufferTexture;
+uint32_t* textures[NUM_TEXTURES];
 
 int initializeWindow();
 void destroyWindow();
@@ -101,11 +105,11 @@ void setup()
 	player.speed = 100;
 	player.rotSpeed = PI;
 
-	colorBuffer = (Uint32*)malloc(sizeof(Uint32) * (Uint32)WINDOW_WIDTH * (Uint32)WINDOW_HEIGHT);
+	colorBuffer = (uint32_t*)malloc(sizeof(uint32_t) * (uint32_t)WINDOW_WIDTH * (uint32_t)WINDOW_HEIGHT);
 
-	colorBufferTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT);
+	colorBufferTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	wallTexture = (Uint32*)malloc(sizeof(Uint32) * (Uint32)TEX_W * (Uint32)TEX_H);
+	wallTexture = (uint32_t*)malloc(sizeof(uint32_t) * (uint32_t)TEX_W * (uint32_t)TEX_H);
 	for (int y = 0; y < TEX_H; y++)
 	{
 		for (int x = 0; x < TEX_W; x++)
@@ -113,6 +117,64 @@ void setup()
 			Uint32 col = x % 8 && y % 8 ? 0xFF0000FF : 0xFF000000;
 			wallTexture[(y * TEX_W) + x] = col;
 		}
+	}
+	textures[0] = wallTexture;
+
+	pngTexture = upng_new_from_file(REDBRICK_TEX);
+	if (pngTexture != NULL)
+	{
+		upng_decode(pngTexture);
+		if(upng_get_error(pngTexture) == UPNG_EOK)
+			textures[1] = (uint32_t*)upng_get_buffer(pngTexture);
+	}
+	pngTexture = upng_new_from_file(PURPLESTONE_TEX);
+	if (pngTexture != NULL)
+	{
+		upng_decode(pngTexture);
+		if (upng_get_error(pngTexture) == UPNG_EOK)
+			textures[2] = (uint32_t*)upng_get_buffer(pngTexture);
+	}
+	pngTexture = upng_new_from_file(MOSSYSTONE_TEX);
+	if (pngTexture != NULL)
+	{
+		upng_decode(pngTexture);
+		if (upng_get_error(pngTexture) == UPNG_EOK)
+			textures[3] = (uint32_t*)upng_get_buffer(pngTexture);
+	}
+	pngTexture = upng_new_from_file(GRAYSTONE_TEX);
+	if (pngTexture != NULL)
+	{
+		upng_decode(pngTexture);
+		if (upng_get_error(pngTexture) == UPNG_EOK)
+			textures[4] = (uint32_t*)upng_get_buffer(pngTexture);
+	}
+	pngTexture = upng_new_from_file(COLORSTONE_TEX);
+	if (pngTexture != NULL)
+	{
+		upng_decode(pngTexture);
+		if (upng_get_error(pngTexture) == UPNG_EOK)
+			textures[5] = (uint32_t*)upng_get_buffer(pngTexture);
+	}
+	pngTexture = upng_new_from_file(BLUESTONE_TEX);
+	if (pngTexture != NULL)
+	{
+		upng_decode(pngTexture);
+		if (upng_get_error(pngTexture) == UPNG_EOK)
+			textures[6] = (uint32_t*)upng_get_buffer(pngTexture);
+	}
+	pngTexture = upng_new_from_file(WOOD_TEX);
+	if (pngTexture != NULL)
+	{
+		upng_decode(pngTexture);
+		if (upng_get_error(pngTexture) == UPNG_EOK)
+			textures[7] = (uint32_t*)upng_get_buffer(pngTexture);
+	}
+	pngTexture = upng_new_from_file(EAGLE_TEX);
+	if (pngTexture != NULL)
+	{
+		upng_decode(pngTexture);
+		if (upng_get_error(pngTexture) == UPNG_EOK)
+			textures[8] = (uint32_t*)upng_get_buffer(pngTexture);
 	}
 }
 
@@ -385,20 +447,14 @@ void generate3DProjection()
 			xOffset = (int)rays[i].hitX % TILE_SIZE;
 		}
 		
-		//int tintA = 0xFF;
-		//int tintR, tintG, tintB;
-		//tintR = tintG = tintB = rays[i].isVertical ? 0xFF: 0xCC;		
+		Uint32 tint =  rays[i].isVertical ? 0xFF : 0xCC;
 
 		//render from top pixel to bottom pixel
 		for (int y = wallTopPixel; y < wallBottomPixel; y++)
 		{
 			int distanceFromTop = (y + wallStripHeight / 2) - (WINDOW_HEIGHT / 2);
 			int yOffset =distanceFromTop * ((float)TEX_H / wallStripHeight);
-			Uint32 texColor = wallTexture[(yOffset * TEX_W) + xOffset];
-
-			//int r, g, b,a;
-			//SDL_GetRGBA(&texColor, SDL_PIXELFORMAT_ARGB8888, &r, &g, &b, &a);
-			//r *= tintA; g *= tintG; b *= tintB; a *= tintA;
+			Uint32 texColor = textures[rays[i].hitContent][(yOffset * TEX_W) + xOffset];
 
 			colorBuffer[(y * WINDOW_WIDTH) + i] = texColor;
 		}
