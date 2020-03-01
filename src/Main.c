@@ -42,6 +42,9 @@ Player player;
 Ray rays[NUM_RAYS];
 int isGameRunning = FALSE;
 
+Uint32* colorBuffer = NULL;
+SDL_Texture* colorBufferTexture;
+
 int initializeWindow();
 void destroyWindow();
 void setup();
@@ -54,7 +57,10 @@ int hasWallAt(int x, int u);
 float distanceBetweenPoints(float x1, float y1, float x2, float y2);
 void castAllRays();
 
-void renderMap();
+void generate3DProjection();
+void clearColorBuffer(Uint32 color);
+void renderColorBuffer();
+void renderMinimap();
 void renderPlayer();
 void renderRays();
 void render();
@@ -93,6 +99,10 @@ void setup()
 	player.rotationAngle = PI / 2;
 	player.speed = 100;
 	player.rotSpeed = PI;
+
+	colorBuffer = (Uint32*)malloc(sizeof(Uint32) * (Uint32)WINDOW_WIDTH * (Uint32)WINDOW_HEIGHT);
+
+	colorBufferTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT);
 }
 
 void update()
@@ -111,7 +121,12 @@ void render()
 	SDL_SetRenderDrawColor(renderer, 31, 31, 31, 255);
 	SDL_RenderClear(renderer);
 
-	renderMap();
+	generate3DProjection();
+
+	renderColorBuffer();
+	clearColorBuffer(0xFF000000);
+
+	renderMinimap();
 	renderRays();
 	renderPlayer();
 
@@ -323,7 +338,50 @@ int hasWallAt(int x, int y)
 	return map[mapGridIndexY][mapGridIndexX];
 }
 
-void renderMap()
+void generate3DProjection()
+{
+	for (int i = 0; i < NUM_RAYS; i++)
+	{
+		float correctedDistance = rays[i].dist * cos(rays[i].angle - player.rotationAngle);
+		float distProjPlane = (WINDOW_WIDTH / 2) / tan(FOV / 2);
+		float projWallHeight = (TILE_SIZE / correctedDistance) * distProjPlane;
+		int wallStripHeight = projWallHeight;
+
+		int wallTopPixel = (WINDOW_HEIGHT / 2) - (wallStripHeight / 2);
+		if (wallTopPixel < 0)
+			wallTopPixel = 0;
+
+		int wallBottomPixel = (WINDOW_HEIGHT / 2) + (wallStripHeight / 2);
+		if (wallBottomPixel > WINDOW_HEIGHT)
+			wallBottomPixel = WINDOW_HEIGHT;
+
+		//render from top pixel to bottom pixel
+		for (int y = wallTopPixel; y < wallBottomPixel; y++)
+		{
+			colorBuffer[(y * WINDOW_WIDTH) + i] = 0xFFF0000;
+		}
+	}
+}
+
+void clearColorBuffer(Uint32 color)
+{
+	for (int y = 0; y < WINDOW_HEIGHT; y++)
+	{
+		for (int x = 0; x < WINDOW_WIDTH; x++)
+		{
+			colorBuffer[x + WINDOW_WIDTH * y] = color;
+		}
+	}
+}
+
+void renderColorBuffer()
+{
+	SDL_UpdateTexture(colorBufferTexture, NULL, colorBuffer, sizeof(Uint32) *(int)WINDOW_WIDTH);
+
+	SDL_RenderCopy(renderer, colorBufferTexture, NULL, NULL);
+}
+
+void renderMinimap()
 {
 	for (int y = 0; y < MAP_NUM_ROWS; y++)
 	{
@@ -402,6 +460,8 @@ int initializeWindow()
 
 void destroyWindow()
 {
+	free(colorBuffer);
+	SDL_DestroyTexture(colorBufferTexture);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
