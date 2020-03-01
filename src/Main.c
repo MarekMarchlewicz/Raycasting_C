@@ -45,6 +45,8 @@ int isGameRunning = FALSE;
 Uint32* colorBuffer = NULL;
 SDL_Texture* colorBufferTexture;
 
+Uint32* wallTexture = NULL;
+
 int initializeWindow();
 void destroyWindow();
 void setup();
@@ -103,6 +105,15 @@ void setup()
 	colorBuffer = (Uint32*)malloc(sizeof(Uint32) * (Uint32)WINDOW_WIDTH * (Uint32)WINDOW_HEIGHT);
 
 	colorBufferTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+	wallTexture = (Uint32)malloc(sizeof(Uint32) * (Uint32)TEX_W * (Uint32)TEX_H);
+	for (int y = 0; y < TEX_H; y++)
+	{
+		for (int x = 0; x < TEX_W; x++)
+		{
+			wallTexture[(y * WINDOW_WIDTH) + x] = x % 8 && y % 8 ? 0xFF0000FF : 0xFF000000;
+		}
+	}
 }
 
 void update()

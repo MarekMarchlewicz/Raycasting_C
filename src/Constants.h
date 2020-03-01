@@ -8,6 +8,9 @@
 #define MAP_NUM_COLS 15
 #define TILE_SIZE 64
 
+#define TEX_W 64
+#define TEX_H 64
+
 #define FPS 30
 #define FRAME_TIME_LENGTH (1000.0f / FPS)
 
