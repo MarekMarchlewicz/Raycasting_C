@@ -37,3 +37,6 @@ const int map[MAP_NUM_ROWS][MAP_NUM_COLS] =
 			{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
 			{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 };
+
+const Uint32 FLOOR_COLOR = 0xFF3E3E3E;
+const Uint32 CEILING_COLOR = 0xFF000000;

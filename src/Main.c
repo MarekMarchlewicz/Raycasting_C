@@ -355,10 +355,11 @@ void generate3DProjection()
 		if (wallBottomPixel > WINDOW_HEIGHT)
 			wallBottomPixel = WINDOW_HEIGHT;
 
+		Uint32 color = rays[i].isVertical ? 0xFFFFFFFF : 0xFFCCCCCC;
 		//render from top pixel to bottom pixel
 		for (int y = wallTopPixel; y < wallBottomPixel; y++)
 		{
-			colorBuffer[(y * WINDOW_WIDTH) + i] = 0xFFF0000;
+			colorBuffer[(y * WINDOW_WIDTH) + i] = color;
 		}
 	}
 }
@@ -367,9 +368,10 @@ void clearColorBuffer(Uint32 color)
 {
 	for (int y = 0; y < WINDOW_HEIGHT; y++)
 	{
+		Uint32 col = (y < WINDOW_HEIGHT / 2) ? CEILING_COLOR : FLOOR_COLOR;
 		for (int x = 0; x < WINDOW_WIDTH; x++)
 		{
-			colorBuffer[x + WINDOW_WIDTH * y] = color;
+			colorBuffer[x + WINDOW_WIDTH * y] = col;
 		}
 	}
 }
