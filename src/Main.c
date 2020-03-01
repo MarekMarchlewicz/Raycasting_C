@@ -43,9 +43,8 @@ Ray rays[NUM_RAYS];
 int isGameRunning = FALSE;
 
 Uint32* colorBuffer = NULL;
-SDL_Texture* colorBufferTexture;
-
 Uint32* wallTexture = NULL;
+SDL_Texture* colorBufferTexture;
 
 int initializeWindow();
 void destroyWindow();
@@ -106,12 +105,13 @@ void setup()
 
 	colorBufferTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-	wallTexture = (Uint32)malloc(sizeof(Uint32) * (Uint32)TEX_W * (Uint32)TEX_H);
+	wallTexture = (Uint32*)malloc(sizeof(Uint32) * (Uint32)TEX_W * (Uint32)TEX_H);
 	for (int y = 0; y < TEX_H; y++)
 	{
 		for (int x = 0; x < TEX_W; x++)
 		{
-			wallTexture[(y * WINDOW_WIDTH) + x] = x % 8 && y % 8 ? 0xFF0000FF : 0xFF000000;
+			Uint32 col = x % 8 && y % 8 ? 0xFF0000FF : 0xFF000000;
+			wallTexture[(y * TEX_W) + x] = col;
 		}
 	}
 }
@@ -375,11 +375,32 @@ void generate3DProjection()
 			colorBuffer[(y * WINDOW_WIDTH) + i] = FLOOR_COLOR;
 		}
 
-		Uint32 color = rays[i].isVertical ? 0xFFFFFFFF : 0xFFCCCCCC;
+		int xOffset = 0;
+		if (rays[i].isVertical)
+		{
+			xOffset = (int)rays[i].hitY % TILE_SIZE;
+		}
+		else
+		{
+			xOffset = (int)rays[i].hitX % TILE_SIZE;
+		}
+		
+		//int tintA = 0xFF;
+		//int tintR, tintG, tintB;
+		//tintR = tintG = tintB = rays[i].isVertical ? 0xFF: 0xCC;		
+
 		//render from top pixel to bottom pixel
 		for (int y = wallTopPixel; y < wallBottomPixel; y++)
 		{
-			colorBuffer[(y * WINDOW_WIDTH) + i] = color;
+			int distanceFromTop = (y + wallStripHeight / 2) - (WINDOW_HEIGHT / 2);
+			int yOffset =distanceFromTop * ((float)TEX_H / wallStripHeight);
+			Uint32 texColor = wallTexture[(yOffset * TEX_W) + xOffset];
+
+			//int r, g, b,a;
+			//SDL_GetRGBA(&texColor, SDL_PIXELFORMAT_ARGB8888, &r, &g, &b, &a);
+			//r *= tintA; g *= tintG; b *= tintB; a *= tintA;
+
+			colorBuffer[(y * WINDOW_WIDTH) + i] = texColor;
 		}
 	}
 }
