@@ -26,6 +26,11 @@ typedef struct  Ray
 	float dist;
 	int isVertical;
 	int hitContent;
+
+	int isUp;
+	int isDown;
+	int isLeft;
+	int isRight;
 } Ray;
 
 SDL_Window* window = NULL;
@@ -167,8 +172,8 @@ void castAllRays()
 {
 	for (int i = 0; i < NUM_RAYS; i++)
 	{
-		float rayAngle = player.rotationAngle - (FOV / 2.0f) + i * (FOV / NUM_RAYS);
-		float angle = normalizeAngle(rayAngle);
+		float rayAng = player.rotationAngle - (FOV / 2.0f) + i * (FOV / NUM_RAYS);
+		float angle = normalizeAngle(rayAng);
 		rays[i].angle = angle;
 		float tangent = tan(angle);
 
@@ -178,25 +183,30 @@ void castAllRays()
 		int isFacingRight = angle < 0.5 * PI || angle > 1.5 * PI;
 		int isFacingLeft = !isFacingRight;
 
+		rays[i].isUp = isFacingUp;
+		rays[i].isDown = isFacingDown;
+		rays[i].isRight = isFacingRight;
+		rays[i].isLeft = isFacingLeft;
+		
 		float xintercept, yintercept;
 		float xstep, ystep;
 
-		//////// Horizontal //////// 
+		////// Horizontal //////
 
 		int foundHorzHit = FALSE;
 		float horzWallHitX = 0;
 		float horzWallHitY = 0;
-		int horzWallContent = -1;
+		int horzWallContent = 0;
 
 		yintercept = floor(player.y / TILE_SIZE) * TILE_SIZE;
 		yintercept += isFacingDown ? TILE_SIZE : 0;
 
-		xintercept = player.x + (yintercept - player.y) / tangent;
+		xintercept = player.x + (yintercept - player.y) /tangent;
 
-		ystep =  isFacingUp ? -TILE_SIZE : TILE_SIZE;
+		ystep = isFacingDown ? TILE_SIZE: -TILE_SIZE;
 
 		xstep = TILE_SIZE / tangent;
-		xstep *= (isFacingLeft && xstep > 0) ? -1 : 1;
+		xstep *= (!isFacingRight && xstep > 0) ? -1 : 1;
 		xstep *= (isFacingRight && xstep < 0) ? -1 : 1;
 
 		float nextHorzTouchX = xintercept;
@@ -205,61 +215,61 @@ void castAllRays()
 		while (nextHorzTouchX >= 0 && nextHorzTouchX <= WINDOW_WIDTH && nextHorzTouchY >= 0 && nextHorzTouchY <= WINDOW_HEIGHT) 
 		{
 			float xToCheck = nextHorzTouchX;
-			float yToCheck = nextHorzTouchY + (isFacingUp ? -1 : 0);
+			float yToCheck = nextHorzTouchY + (isFacingDown ? 0 : -1);
 
-			int mapContent = hasWallAt(xToCheck, yToCheck);
-			if (mapContent)
+			int mapValue = hasWallAt(xToCheck, yToCheck);
+			if (mapValue)
 			{
-				horzWallHitX =  nextHorzTouchX;
+				horzWallHitX = nextHorzTouchX;
 				horzWallHitY = nextHorzTouchY;
-				horzWallContent = mapContent;
+				horzWallContent = mapValue;
 				foundHorzHit = TRUE;
 				break;
 			}
-			else
-			{
+			else {
 				nextHorzTouchX += xstep;
 				nextHorzTouchY += ystep;
 			}
 		}
 
-		//////// Vertical //////// 
-		
+		////// Vertical //////
+
 		int foundVertHit = FALSE;
 		float vertWallHitX = 0;
 		float vertWallHitY = 0;
-		int vertWallContent = -1;
+		int vertWallContent = 0;
 
 		xintercept = floor(player.x / TILE_SIZE) * TILE_SIZE;
 		xintercept += isFacingRight ? TILE_SIZE : 0;
 
 		yintercept = player.y + (xintercept - player.x) * tangent;
 
-		xstep = isFacingLeft ? -TILE_SIZE : TILE_SIZE;
+		xstep = isFacingRight ? TILE_SIZE : -TILE_SIZE;
 
 		ystep = TILE_SIZE * tangent;
-		ystep *= (isFacingUp == 0 && ystep > 0) ? -1 : 1;
+		ystep *= (!isFacingDown && ystep > 0) ? -1 : 1;
 		ystep *= (isFacingDown && ystep < 0) ? -1 : 1;
 
 		float nextVertTouchX = xintercept;
 		float nextVertTouchY = yintercept;
 
+		// Increment xstep and ystep until we find a wall
 		while (nextVertTouchX >= 0 && nextVertTouchX <= WINDOW_WIDTH && nextVertTouchY >= 0 && nextVertTouchY <= WINDOW_HEIGHT) 
 		{
-			float xToCheck = nextVertTouchX + (isFacingLeft ? -1 : 0);
+			float xToCheck = nextVertTouchX + (isFacingRight ? 0 : -1);
 			float yToCheck = nextVertTouchY;
 
-			int mapContent = hasWallAt(xToCheck, yToCheck);
-			if (mapContent)
+			int mapValue = hasWallAt(xToCheck, yToCheck);
+			if (mapValue) 
 			{
+				// found a wall hit
 				vertWallHitX = nextVertTouchX;
-				vertWallHitY =  nextVertTouchY;
-				vertWallContent = mapContent;
+				vertWallHitY = nextVertTouchY;
+				vertWallContent = mapValue;
 				foundVertHit = TRUE;
 				break;
 			}
-			else
-			{
+			else {
 				nextVertTouchX += xstep;
 				nextVertTouchY += ystep;
 			}
@@ -348,10 +358,7 @@ void renderRays()
 {
 	for (int i = 0; i < NUM_RAYS; i++)
 	{
-		if(rays[i].isVertical)
-			SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-		else
-			SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+		SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
 		SDL_RenderDrawLine(
 			renderer,
 			player.x * MINIMAP_SCALE_FACTOR,
